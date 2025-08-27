@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  phantom:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    image: phantom:latest
+    container_name: phantom-debug
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - CUDA_VISIBLE_DEVICES=0
+    volumes:
+      - ./examples:/home/phantom/examples
+      - ./reports:/home/phantom/reports
+      - ./runs:/home/phantom/runs
+    command: phantom trace examples/resnet_demo.py --target=cuda --interactive
+
+  phantom-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    image: phantom:dev
+    container_name: phantom-dev
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - .:/home/phantom/phantom
+      - ./reports:/home/phantom/reports
+      - ./runs:/home/phantom/runs
+    command: pytest tests/ -v
+
+  phantom-rocm:
+    image: rocm/pytorch:latest
+    container_name: phantom-rocm
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    environment:
+      - HSA_OVERRIDE_GFX_VERSION=10.3.0
+    volumes:
+      - .:/workspace/phantom
+    working_dir: /workspace/phantom
+    command: phantom trace examples/resnet_demo.py --target=rocm
